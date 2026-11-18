@@ -1,0 +1,9 @@
+target/
+dist/
+.work/
+.local/
+.m2/
+*.log
+*.jpi
+*.hpi
+node_modules/
