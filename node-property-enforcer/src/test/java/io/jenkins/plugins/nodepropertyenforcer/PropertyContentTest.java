@@ -159,7 +159,7 @@ class PropertyContentTest {
             matrix.click();
             jobs.click();
             client.waitForBackgroundJavaScript(1000);
-            var creatorRow = page.getFirstByXPath("//tr[@name='[USER:admin]']");
+            var creatorRow = page.getFirstByXPath("//*[@name='[USER:admin]']");
             assertNotNull(creatorRow);
             assertTrue(page.asNormalizedText().contains(JobRestrictions.MESSAGE));
             HtmlButton save = page.getFirstByXPath("//button[@name='Submit']");
@@ -193,13 +193,20 @@ class PropertyContentTest {
         try (var client = j.createWebClient().login("admin")) {
             HtmlPage page = client.goTo(node.toComputer().getUrl() + "configure");
             client.waitForBackgroundJavaScript(1000);
-            assertNull(page.getFirstByXPath("//tr[@name='[USER:admin]']"));
+            assertNull(page.getFirstByXPath("//*[@name='[USER:admin]']"));
             HtmlCheckBoxInput permission =
-                    page.getFirstByXPath("//tr[@name='[USER:owner]']//input[@name='[hudson.model.Computer.Build]']");
+                    page.getFirstByXPath("//*[@name='[USER:owner]']//input[@name='[hudson.model.Computer.Build]']");
+            HtmlElement header =
+                    page.getFirstByXPath("//*[@name='[USER:owner]']//div[contains(@class,'mas-card__header')]");
+            if (header != null) header.click();
+            assertTrue(permission.isChecked());
             permission.click();
+            assertFalse(permission.isChecked());
             var error = contentError(page, MatrixPermissions.MESSAGE);
             assertFalse(error.hasAttribute("hidden"));
-            assertEquals("table", ((HtmlElement) error.getPreviousSibling()).getTagName());
+            assertSame(
+                    page.querySelector("table.global-matrix-authorization-strategy-table, .mas-container"),
+                    error.getPreviousSibling());
             HtmlButton save = page.getFirstByXPath("//button[@name='Submit']");
             assertSame(page, save.click());
             assertNotNull(j.jenkins.getNode("edit-node").getNodeProperty(AuthorizationMatrixNodeProperty.class));

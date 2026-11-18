@@ -61,23 +61,27 @@
     const {rule} = item;
     if (!item.creating || !rule.creator || table.dataset.nodePolicyCreator) return;
     const name = "[USER:" + rule.creator + "]";
-    let row = Array.from(table.rows).find(candidate => candidate.getAttribute("name") === name);
+    const cards = table.querySelector(".mas-cards");
+    let row = Array.from(cards ? cards.children : table.rows).find(candidate => candidate.getAttribute("name") === name);
     if (!row) {
       const button = container.querySelector('.matrix-auth-add-button[data-type="USER"]');
-      const template = button && document.getElementById(button.dataset.templateId);
+      const template = button && (cards
+        ? Array.from(container.querySelectorAll("template[data-strategy-id]")).find(candidate => candidate.dataset.strategyId === table.id)
+        : document.getElementById(button.dataset.templateId));
       if (!template) return;
       row = template.content.firstElementChild.cloneNode(true);
       row.removeAttribute("style");
       row.removeAttribute("id");
       row.setAttribute("name", name);
-      row.firstElementChild.textContent = rule.creator;
+      if (cards) row.dataset.sid = rule.creator;
+      (row.querySelector(".mas-card__name") || row.firstElementChild).textContent = rule.creator;
       // User IDs stay in textContent; native tooltip hooks keep static, safe descriptions.
       row.querySelectorAll("*").forEach(element => {
         Array.from(element.attributes).filter(attribute => attribute.name.includes("tooltip"))
           .forEach(attribute => element.setAttribute(attribute.name,
             attribute.value.replaceAll("__SID__", "node creator").replaceAll("__TYPE__", "User")));
       });
-      table.tBodies[0].append(row);
+      (cards || table.tBodies[0]).append(row);
     }
     row.querySelectorAll('input[type="checkbox"]').forEach(input => {
       if (rule.permissions.includes(input.name.slice(1, -1))) input.checked = true;
@@ -206,10 +210,10 @@
     const container = item.control.closest(".optionalBlock-container");
     if (!container) return [];
     if (item.rule.check === "matrix") {
-      const table = container.querySelector("table.global-matrix-authorization-strategy-table");
+      const table = container.querySelector("table.global-matrix-authorization-strategy-table, .mas-container");
       if (!table) return [];
       addCreator(item, container, table);
-      const inputs = Array.from(table.querySelectorAll('tbody input[type="checkbox"]'));
+      const inputs = Array.from(table.querySelectorAll('tbody input[type="checkbox"], .mas-cards input[type="checkbox"]'));
       return [{target: table, text: item.rule.contentMessage, invalid: !inputs.some(input => input.checked
         && item.rule.permissions.includes(input.name.slice(1, -1)))}];
     }
@@ -242,9 +246,9 @@
     });
     if (first) {
       item.contentMessage = first.message;
-      item.focusTarget = first.target.tagName === "TABLE"
+      item.focusTarget = first.target.querySelector(".mas-card__header") || (first.target.tagName === "TABLE"
         ? first.target.querySelector('input[type="checkbox"]')
-        : (first.target.matches("input,select,textarea,button") ? first.target : first.message);
+        : (first.target.matches("input,select,textarea,button") ? first.target : first.message));
     }
     return Boolean(first);
   }

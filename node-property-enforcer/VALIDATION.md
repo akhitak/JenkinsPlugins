@@ -166,3 +166,15 @@ These free tools complete the selected checks without a JFrog service. They do n
 
 
 
+
+## Matrix Authorization 3.3 compatibility follow-up
+
+Community dependency preparation exposed a regression: Matrix Authorization 3.3 renders expandable permission cards instead of the older permission table. The browser form guard now supports both layouts, adds the authenticated creator safely, and places empty-permission guidance immediately after the active matrix control. Existing-node edits do not gain automatic permissions.
+
+The evaluation artifact remains on Jenkins 2.555.1 with its original dependency minimums. Its new SHA-256 is `86690b2903b5ebd2e7d09bef1b1fea4313e434894a0ab71ba826499015eff417`. Full Maven verification passed with 70 reported tests, zero failures/errors and three pre-existing skips. All 26 production classes have zero missed JaCoCo instructions, branches, lines, methods and classes. All 30 JavaScript tests passed with 100% line, branch, function and statement coverage. The unchanged strict SonarQube gate passed, with zero open issues; SpotBugs reported zero bugs.
+
+Targeted Matrix 3.3 tests passed after fixing the regression: seven property-content tests and four form-guidance tests. Chrome verified same-page Save/Apply blocking for empty permission cards, creator grants, default No restriction blocking, valid expression correction, successful creation and persistence of all five creator node permissions. The original 3.2.10 provider was then retested after deploying the packaged fix: both missing fields, empty permissions, No restriction, same-page Save/Apply and creator auto-fill worked. No test form was saved on the existing controller. Principal corrected, blocked and persisted views were held for at least 60 seconds; the initial brief card-error view was also captured.
+
+Fresh Grype and OSV scans assessed the packaged JPI and optional provider sets, including Matrix 3.3 and its additional dependencies. Grype catalogued 14 entries and found zero matches or ignored matches, using the 18 November database with mandatory freshness checks. OSV assessed 10 distinct runtime packages and 95 npm test packages, with zero vulnerabilities. Gitleaks found no secrets in the explicit public-source snapshot. This run did not rescan Jenkins core. Previous NVD and endurance results remain historical evidence; this change modifies one production JavaScript resource, with production Java and evaluation dependency versions unchanged.
+
+The deployed plugin is active on localhost:19085. All 29 existing node, job, user and controller configuration files remain unchanged, and the three requested agents are online. Detailed results are recorded in `validation/2026-11-18-matrix-cards.json`; local raw reports and screenshots are under `target/matrix-cards-20261118`. The separate community dependency/baseline proposal has not been deployed or released.

@@ -26,6 +26,8 @@ Empty rows are ignored when saving. An empty list, or disabling every individual
 
 Install or enable a missing provider in Jenkins' plugin manager and restart; its option can then be required, without automatically enforcing it. Do not downgrade newer installed providers to match a minimum. An installed provider must meet its declared minimum. If a previously enforced provider disappears, its saved rule continues to fail compliance until the rule is disabled/removed or the provider is restored. This prevents silent loss of enforcement.
 
+Matrix Authorization 3.2.10's permission table and 3.3's expandable permission cards are supported. Creator grants and empty-permission validation work with both layouts. These compatibility checks do not change the minimum dependency versions in this evaluation build.
+
 ## Administrator controls
 
 | Setting | Enabled | Disabled |
