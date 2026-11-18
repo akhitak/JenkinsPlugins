@@ -6,9 +6,9 @@ Status: **development candidate; unchanged strict SonarQube quality gate PASSED,
 
 Only Node Property Enforcer source, test tooling, dependencies and plugin endpoints were assessed. Jenkins 2.555.1 / Java 21.0.13 were unchanged disposable test hosts. No Jenkins core patch, controller-wide vulnerability scan or organizational Jenkins access was performed. Existing local Maven, JDK, SonarQube and Gitleaks installations were reused.
 
-The final full run contains **69 reported Java tests: 67 passed, two intentional skips, zero failures/errors** (`message-audit-cycle3-verify.log`). It passes `verify -Penable-jacoco`, including all coverage counters, SpotBugs and formatting. The skips are the opt-in manual browser fixture and one generated Jenkins harness check. The delivered JPI is this verified artifact.
+The final full run contains **70 reported Java tests: 67 passed, three intentional skips, zero failures/errors** (`final-release-verify.log`). It passes `verify -Penable-jacoco,security-audit`, including all coverage counters, SpotBugs, formatting and the fresh dependency scan. The skips are the opt-in manual browser fixture, the separately run endurance fixture, and one generated Jenkins harness check. The delivered JPI is this verified artifact.
 
-Run `npm ci --ignore-scripts` followed by `npm run coverage` for the JavaScript suite. The final run contains **28 passing tests**, recorded in `message-audit-cycle3-js.log`. Test-only npm dependencies are not packaged in the JPI.
+Run `npm ci --ignore-scripts` followed by `npm run coverage` for the JavaScript suite. The final run contains **28 passing tests**, recorded in `final-release-js.log`. Test-only npm dependencies are not packaged in the JPI.
 
 ## Why coverage was 68.4%, and what changed
 
@@ -30,7 +30,9 @@ The earlier combined Sonar measure included browser scripts without an imported 
 
 No production code was excluded from reporting, no coverage counters were manufactured, and no rules or thresholds were relaxed. The inherited JaCoCo report exclusions were explicitly cleared. Instrumentation is limited to this plugin's package so it does not instrument Jenkins core. Reports inspect every compiled project class. All four production JavaScript files are instrumented; new source files are seeded with zero coverage before tests. JaCoCo requires 100% line, branch, instruction, method and class coverage; the JavaScript command requires 100% line, branch, statement and function coverage. Sonar imports both actual reports.
 
-`target/message-audit-20261118/rules-comparison.json` verifies that strict gate conditions and assigned profile keys, rule counts and rule-update timestamps match the snapshots taken before analysis. Existing narrowly documented suppressions were not broadened. Historical resolved Sonar issues remain in the API export; the current scan has no open issues. The final unchanged gate passed (`message-audit-cycle3-sonar.log`).
+`target/final-security-20261118/rules-comparison.json` verifies that strict gate conditions and assigned profile keys, rule counts and rule-update timestamps match the snapshots taken before analysis. Existing narrowly documented production suppressions were not broadened. Historical resolved Sonar issues remain in the API export; the current scan has no open issues. The final unchanged gate passed (`final-release-sonar2.log`). A naming issue found in the new endurance test was corrected before this passing analysis.
+
+The final source secret scan reported zero leaks. An additional scan of the generated evidence reported 119 generic-key detections: 61 Sonar issue IDs and 58 quality-profile/parent-profile IDs across the before/after snapshots. Each was verified against its structured API object as a noncredential identifier. The raw redacted findings and all classifications are retained; no scanner rule or source exclusion was added. The generated-report scan is not presented as a zero-detection result.
 
 ## Jenkins resource-health checks
 
@@ -41,11 +43,36 @@ The review identified and fixed practical resource risks:
 * Browser validation runs at most four requests concurrently, cancels superseded requests, bounds pending work, uses weakly held input caches and has ten-second request timeouts. Page exit cancels pending work, clears timers and disconnects the observer. Browser history restoration resumes validation.
 * Warning polling allows one request at a time, pauses on hidden pages and stops for detached UI or page exit. Timeout, failure and restoration paths are tested.
 
-The final sample of **2,000 enforcement queue checks** measured **40.211 ms wall time, 31.250 ms thread CPU and 10,219,768 bytes of temporary allocation**. The test requires completion within ten seconds and allocation below 128 MiB. Concurrent-history tests completed without detected deadlocks; the tests also check the history cap and absence of newly created plugin threads.
+The final sample of **2,000 enforcement queue checks** measured **36.049 ms wall time, 31.250 ms thread CPU and 10,075,768 bytes of temporary allocation**. The test requires completion within ten seconds and allocation below 128 MiB. Concurrent-history tests completed without detected deadlocks; the tests also check the history cap and absence of newly created plugin threads.
 
 The new read-only queue diagnostic bounds requests to eight IDs, matching nodes to 32 and name-rule traversal to 128 visits/depth 32/list size 100. Unknown restriction classes and subclasses are not evaluated. Tests cover these bounds, provider matching, anonymous access, job visibility, hidden pattern details, offline/eligible node fallback, browser request timeouts, widget replacement and navigation cleanup. These limits do not impose a runtime timeout on the provider's Java regular-expression matching.
 
-These are bounded regression checks on this laptop, not a heap-retention soak test, production capacity benchmark or proof against every OOM, CPU spike, JVM failure or thread issue. Queue cost still depends on policy size, node count, request concurrency and external provider behavior. Arbitrary Java regular expressions are checked for syntax/completeness, not runtime complexity. A syntactically valid expensive expression can still burden the Job Restrictions provider when it evaluates jobs. Validate intended policies and soak-test representative workloads before production rollout.
+These short regression checks supplement the isolated endurance results below. Neither is a production capacity benchmark or proof against every OOM, CPU spike, JVM failure or thread issue. Queue cost still depends on policy size, node count, request concurrency and external provider behavior. Arbitrary Java regular expressions are checked for syntax/completeness, not runtime complexity. A syntactically valid expensive expression can still burden the Job Restrictions provider when it evaluates jobs. Validate intended policies and soak-test representative workloads before production rollout.
+
+## Completed endurance runs
+
+Both opt-in JenkinsRule runs passed and their disposable controllers/agents exited cleanly. Each used Jenkins 2.555.1, Java 21.0.13, Matrix Auth 3.2.10, a 512 MiB controller heap, four online agents and an additional 60-second warm-up. Existing localhost:19085 nodes and settings were never used as load-test fixtures.
+
+| Measurement | Job Restrictions 216.v0732cc7fb_076 | Job Restrictions 242.v6edda_c9e4ca_f |
+| --- | --- | --- |
+| Measured duration | 3,601.15 s | 1,801.33 s |
+| Enforcement checks | 704,000 | 352,000 |
+| Successful builds | 63 | 32 |
+| Plugin HTTP requests | 17,726 | 8,864 |
+| HTTP p99 | 5.42 ms | 5.52 ms |
+| Post-GC heap: baseline → final | 90.90 → 55.59 MiB | 91.11 → 54.48 MiB |
+| Maximum sampled post-GC heap | 90.99 MiB | 91.20 MiB |
+| Live threads: baseline / maximum / final | 62 / 66 / 61 | 64 / 64 / 61 |
+| Average controller CPU, fraction of one core | 7.36% | 7.04% |
+| Longest recorded GC pause, including startup | 128.35 ms | 101.21 ms |
+
+Every incomplete-node combination and the job-name mismatch stayed queued throughout. Direct, shared-label and compound-label builds used only the compliant agent. Running/completed status reported no false warning. The assertions detected no deadlocks, excessive retained-heap growth, thread growth beyond the unchanged limit, slow HTTP tail, failed request or failed build. These finite results support this tested workload; they do not prove absence of all leaks or JVM issues in production.
+
+The full-depth JFR review found zero OOM, stack-overflow, InternalError or UnknownError events. It also retained **nine and seven handled events with production plugin frames**, respectively: JVM method-handle lookup exceptions and the parser's lookahead control-flow object. These were reviewed using [OpenJDK's handled lookup path](https://github.com/openjdk/jdk21u/blob/master/src/java.base/share/classes/java/lang/invoke/MemberName.java) and [Apache's parser explanation](https://issues.apache.org/jira/browse/JEXL-389), rather than being called absent or removed from the reports. No unreviewed plugin-associated error event remains. Full recorded stacks and classifications accompany the evidence.
+
+The default JFR profile included unrelated process/environment/launch metadata. The test wrapper now disables those four metadata event types while retaining GC, memory, thread and error monitoring. A separate 60.83-second run passed 11,600 checks and two builds, recorded zero such metadata events and produced no JFR startup/Surefire channel warning. Relative JDK paths are resolved before Maven changes directories. The two longer recordings were scrubbed of the same metadata events before packaging; health events and classifications were retained. No coverage or quality rule was changed. The raw private recordings are not included in the distributed validation archive.
+
+Machine-readable results are in `validation/2026-11-18-security-soak.json`. The evidence archive contains samples, scrubbed recordings, full test logs and recorder-scope checks.
 
 ## Functional behavior retained
 
@@ -69,9 +96,9 @@ Review also found that the dashboard's native hover text retained the incomplete
 
 That earlier configuration comparison showed **29 unchanged files**. Only that review's queued items 9, 10 and 11 were cancelled; completed build history remains available. `noRestriction`, `Restricted` and `restriction-validation-164439` are online, and Chrome was left on Nodes. No existing node, job or authorization settings were edited during the walkthrough.
 
-## Current Chrome message audit
+## Earlier 18 November Chrome message audit
 
-The 18 November review uses the final installed artifact, SHA-256 `0fd2289f8782d02a67d53f57b7a5b2106db840f4303b074c024a09ff9feacd41`. Detailed cases and screenshots are in the validation archive's `chrome-review` folder. Important views were left visible for at least 60 seconds. Chrome interaction initially failed because another application covered its window; restoring Chrome visibility resolved that obstruction.
+The earlier 18 November review used artifact SHA-256 `0fd2289f8782d02a67d53f57b7a5b2106db840f4303b074c024a09ff9feacd41`. Detailed cases and screenshots are in the validation archive's `earlier-chrome-review` folder. Important views were left visible for at least 60 seconds. Chrome interaction initially failed because another application covered its window; restoring Chrome visibility resolved that obstruction. The later rebuilt artifact and post-install checks are recorded below.
 
 The review found and corrected three plugin issues before continuing: queue rendering could overwrite the Cancel tooltip, optional-provider linkage could prevent queue guidance from loading without Job Restrictions, and an oversized class name showed a syntax message instead of its 1024-character limit. Each correction was built, installed in the review environment and retested. The final full verification and unchanged Sonar gate passed after those corrections.
 
@@ -99,11 +126,25 @@ The final deployed-controller reruns produced these results without editing thei
 
 The running and completed direct/shared-label consoles had no false warning about unused nodes. All three requested nodes remained online. The final comparison again found zero changes among the 29 existing configuration files; the original queued build was retained. Source, installed JPI and test-stage production resources were compared, and the installed and delivered JPI hashes match.
 
-## Scan limitations and release status
+## Post-install verification of the refreshed scan build
 
-The fresh OWASP Dependency-Check update **failed** because no usable NVD API key/data was available (`coverage-dependencies.log`). This is not a passing current dependency scan. The prior cached scan dated 10 November is historical and is not presented as fresh evidence. The existing expiring matrix-auth/matrix-project false-positive suppression was not changed. Xray has no configured service credentials. No new broad DAST result is claimed; direct plugin HTTP tests cover permissions, POST and CSRF boundaries.
+The refreshed build was installed on localhost:19085 with SHA-256 `1d8b47b3f6a52aa4bd4adfb731488f11c76eb5b4bcc319e6cf87ca1a03cdb024`. A ZIP-entry comparison found all 58 runtime classes/resources unchanged from the previously reviewed JPI; only the private-build manifest timestamp differed. The new source changes repair the NVD scan configuration and add the opt-in endurance test and documentation.
 
-This is an evaluation build, not an approved Jenkins community release or a guarantee of future LTS/weekly compatibility. Jenkins hosting metadata/maintainer setup, current dependency vulnerability data and representative production soak testing remain release tasks. The package includes source, test reports, coverage reports, scanner evidence, resource measurements and SHA-256 checksums.
+The visible Chrome walkthrough confirmed both missing options beside their fields, Save remaining on the same page, empty permission and default No restriction blocking, and separate local errors for both unrestricted And children when Apply was used. All attempted form changes were discarded without saving. `test #5` completed SUCCESS on `Restricted`; shared-label build `approved-npe-review-20261117-label-pool #4` completed SUCCESS on `restriction-validation-164439`. Their running and completed consoles contained no warning about unused nodes. The original queue item 15 remained pending and its explanation named both missing options only for `noRestriction`. Important views were held for at least 60 seconds; screenshots and timestamps are under `final-security-20261118/chrome` in the evidence archive.
+
+An additional attempt to view the already-tested single-missing-option combinations in the isolated soak controller stopped at sign-in when browser control could no longer verify its active URL safely. It is not counted as completed UI evidence. Those combinations remained continuously asserted through the soak's plugin HTTP endpoints, in addition to the earlier completed Chrome audit. Browser automation was stopped at that boundary; no settings were saved or safety check bypassed.
+
+All three requested existing nodes stayed online. The final 29-file configuration comparison is included with the reports. The test builds add build history, but do not change existing node, job, user or controller configuration.
+
+## Current dependency scans and remaining service prerequisites
+
+The earlier NVD update failure was Dependency-Check 13.0.0's [empty API-key defect](https://github.com/dependency-check/DependencyCheck/issues/8715). The security profile now uses the [official NVD JSON 2.0 feeds](https://nvd.nist.gov/vuln/data-feeds), without modifying scanner binaries or lowering failure thresholds. A new database was populated on 18 November. Fresh scans passed for both Job Restrictions 216.v0732cc7fb_076 and 242.v6edda_c9e4ca_f with Matrix Auth 3.2.10: **zero unsuppressed vulnerabilities**. The final rebuilt artifact's dependency scan also passed. Nine runtime dependency/source entries were assessed; Jenkins/core and test dependencies were not scanned.
+
+The existing expiring suppression for matrix-auth's incorrect matrix-project CVE mapping remains unchanged: CVE-2024-23900 is the sole suppressed finding. Scanner errors and any other CVSS finding, including zero, still fail the scan. npm audit separately reported zero vulnerabilities in this plugin's test tooling. The previous cached 10 November result is not used as fresh evidence.
+
+The signed JFrog CLI 2.133.0 was installed after no local CLI or connection profile was found. An artifact-only Xray attempt failed because no JFrog/Xray service URL or credentials are configured. **Xray has not passed.** Its raw failure and artifact hash are retained under `target/final-security-20261118/xray`. The optional Sonatype OSS Index analyzer also lacks service credentials; this is not claimed as a completed scan. No new broad DAST result is claimed; direct plugin HTTP tests cover permissions, POST and CSRF boundaries.
+
+This is an evaluation build, not an approved Jenkins community release or a guarantee of future LTS/weekly compatibility. Jenkins hosting metadata/maintainer setup and the unavailable Xray service remain release prerequisites. Isolated endurance results do not replace testing at an installation's actual scale with its other plugins and workloads. The package includes source, test reports, coverage reports, scanner evidence, resource measurements and SHA-256 checksums.
 
 
 

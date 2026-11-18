@@ -121,7 +121,23 @@ Optional plugin-scope dependency scan:
 mvn -Psecurity-audit verify
 ```
 
-Provided Jenkins/core and test dependencies are excluded from that scan. The one narrowly scoped, expiring suppression corrects Dependency-Check's mapping of `matrix-auth:3.2.10` to the **different** `matrix-project` product (CVE-2024-23900), with a primary advisory link in the suppression file. Scan evidence and limitations are recorded in `VALIDATION.md`.
+The profile downloads the official NVD JSON 2.0 feeds, avoiding Dependency-Check 13.0.0's empty API-key defect. It fails on scanner errors or any unsuppressed CVSS finding, including score zero. Provided Jenkins/core and test dependencies are outside this plugin-only scan. The one narrowly scoped, expiring suppression corrects Dependency-Check's mapping of `matrix-auth:3.2.10` to the **different** `matrix-project` product (CVE-2024-23900), with a primary advisory link in the suppression file. Scan evidence and limitations are recorded in `VALIDATION.md`.
+
+For an isolated hour-long endurance check on Windows:
+
+```powershell
+./scripts/Test-Soak.ps1 -Minutes 60 -JavaHome $env:JAVA_HOME
+```
+
+This opt-in test creates a temporary controller and four local agents. It repeatedly checks each missing-option combination, queue explanations, shared/compound labels, and running/completed build status. It never connects to an existing Jenkins home. The controller is limited to a 512 MiB heap; samples and a Java Flight Recorder file are written under `target/soak`. The recording omits machine-wide process lists, environment variables, system properties and JVM launch arguments. After warm-up, the test requires less than 32 MiB retained-heap growth, at most 16 additional live threads, HTTP p99 below two seconds, no deadlocks, and average controller CPU below half of one core. All incomplete nodes must stay blocked and all completed builds must use the compliant node. These are measured test limits, not a guarantee for every workload or third-party restriction.
+
+An Xray binary scan can target only the resulting JPI:
+
+```shell
+jf scan target/node-property-enforcer.jpi --server-id=YOUR_EXISTING_PROFILE --format=json --vuln --fail=true --threads=1
+```
+
+It requires an existing JFrog Platform connection with Xray access. An absent connection, unsuccessful scan, or report containing vulnerabilities is not a pass. No JFrog account, entitlement or credentials are bundled with this project.
 
 ## Community publication and ongoing support
 

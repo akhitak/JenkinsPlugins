@@ -204,6 +204,7 @@
             <configuration>
               <failBuildOnCVSS>0</failBuildOnCVSS>
               <failOnError>true</failOnError>
+              <nvdDatafeedUrl>https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz</nvdDatafeedUrl>
               <skipProvidedScope>true</skipProvidedScope>
               <skipTestScope>true</skipTestScope>
               <suppressionFiles>
