@@ -131,13 +131,15 @@ For an isolated hour-long endurance check on Windows:
 
 This opt-in test creates a temporary controller and four local agents. It repeatedly checks each missing-option combination, queue explanations, shared/compound labels, and running/completed build status. It never connects to an existing Jenkins home. The controller is limited to a 512 MiB heap; samples and a Java Flight Recorder file are written under `target/soak`. The recording omits machine-wide process lists, environment variables, system properties and JVM launch arguments. After warm-up, the test requires less than 32 MiB retained-heap growth, at most 16 additional live threads, HTTP p99 below two seconds, no deadlocks, and average controller CPU below half of one core. All incomplete nodes must stay blocked and all completed builds must use the compliant node. These are measured test limits, not a guarantee for every workload or third-party restriction.
 
-An Xray binary scan can target only the resulting JPI:
+The completed free alternative uses Syft, Grype, OSV-Scanner, SonarQube, SpotBugs and Gitleaks, with a scoped Microsoft Defender archive check. See [the results](validation/2026-11-18-free-security.json) and [repeatable scan commands](validation/free-security/README.md). No JFrog account is required for this workflow.
+
+An optional Xray binary scan can target only the resulting JPI:
 
 ```shell
-jf scan target/node-property-enforcer.jpi --server-id=YOUR_EXISTING_PROFILE --format=json --vuln --fail=true --threads=1
+jf scan target/node-property-enforcer.jpi --server-id=YOUR_EXISTING_PROFILE --watches=YOUR_STRICT_WATCH --format=sarif --vuln=true --fail=true --fixable-only=false --recursive=false --threads=1
 ```
 
-It requires an existing JFrog Platform connection with Xray access. An absent connection, unsuccessful scan, or report containing vulnerabilities is not a pass. No JFrog account, entitlement or credentials are bundled with this project.
+It requires an existing JFrog Platform connection with Xray access and a watch whose policies fail the scan for every reported severity. The fail flag alone does not create that policy. An absent connection, unsuccessful scan, incomplete component analysis, or report containing findings is not a pass. No JFrog account, entitlement or credentials are bundled with this project.
 
 ## Community publication and ongoing support
 
